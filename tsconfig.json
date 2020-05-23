@@ -1,0 +1,15 @@
+{
+  "extends": "@vzh/configs/ts/common.tsconfig.json",
+  "compilerOptions": {
+    "module": "es2015",
+    "isolatedModules": false,
+    "outDir": "./dist",
+    "baseUrl": "./src",
+    "declaration": true,
+    "sourceMap": false,
+    "incremental": true,
+    "typeRoots": ["./@types", "./node_modules/@types"],
+    "diagnostics": true
+  },
+  "include": ["./src/**/*"]
+}
