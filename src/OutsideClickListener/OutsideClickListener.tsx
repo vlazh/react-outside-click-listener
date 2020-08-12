@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 
+/** Map of elements and selectors */
 export type HtmlTagSelectorMap = { [P in keyof JSX.IntrinsicElements]?: string | undefined };
 
 export interface OutsideClickListenerProps {
@@ -17,7 +18,7 @@ export interface OutsideClickListenerProps {
    */
   topNode?: React.RefObject<Element> | Element | string | null;
   /** Do not fire `onOutsideClick` event for these elements (and their children) */
-  ignore?: HtmlTagSelectorMap | ((node: Element) => boolean);
+  ignore?: HtmlTagSelectorMap | ((node: Element) => boolean) | string /** selectors */;
   /** Same as `topNode` but for `ignore` */
   ignoreTopNode?: React.RefObject<Element> | Element | string | null;
 }
@@ -34,15 +35,24 @@ function setRef<T extends Node = Node>(
   }
 }
 
-function findUp(el: Element, map: HtmlTagSelectorMap, topNode?: Element | null): boolean {
+function findUp(
+  el: Element,
+  mapOrSelectors: HtmlTagSelectorMap | string,
+  topNode?: Element | null
+): boolean {
   const tag = el.nodeName.toLowerCase();
-  if (tag in map && (map[tag] == null || el.matches(map[tag]))) {
+  if (typeof mapOrSelectors === 'string') {
+    if (el.matches(mapOrSelectors)) return true;
+  } else if (
+    tag in mapOrSelectors &&
+    (mapOrSelectors[tag] == null || el.matches(mapOrSelectors[tag]))
+  ) {
     return true;
   }
   if (el === topNode || !el.parentElement) {
     return false;
   }
-  return findUp(el.parentElement, map, topNode);
+  return findUp(el.parentElement, mapOrSelectors, topNode);
 }
 
 function getNode(node: NonNullable<OutsideClickListenerProps['topNode']>): Element | null {
@@ -70,7 +80,7 @@ export default function OutsideClickListener({
   ignoreTopNode,
   children,
 }: OutsideClickListenerProps): JSX.Element {
-  const selfNodeRef = useRef<Element | null>(null);
+  const selfNodeRef = useRef<Element>(null);
   const ignoreRef = useRef(ignore);
 
   const refHandler = React.useCallback(
@@ -94,9 +104,9 @@ export default function OutsideClickListener({
       const { current: ignoreMapOrFn } = ignoreRef;
       if (ignoreMapOrFn) {
         const isIgnored =
-          typeof ignoreMapOrFn === 'object'
-            ? findUp(eventSourceNode, ignoreMapOrFn, ignoreTopNode ? getNode(ignoreTopNode) : null)
-            : ignoreMapOrFn(eventSourceNode);
+          typeof ignoreMapOrFn === 'function'
+            ? ignoreMapOrFn(eventSourceNode)
+            : findUp(eventSourceNode, ignoreMapOrFn, ignoreTopNode ? getNode(ignoreTopNode) : null);
 
         if (isIgnored) {
           // Just ignore and do nothing
