@@ -9,6 +9,7 @@ export interface OutsideClickListenerProps {
    */
   disabled?: boolean;
   onOutsideClick: (nativeEvent: Event) => void;
+  stopPropagation?: boolean;
   children: React.ReactElement & { ref?: React.Ref<Node> };
   /**
    * `id` or `Ref` or `Node`.
@@ -75,6 +76,7 @@ function getNode(node: NonNullable<OutsideClickListenerProps['topNode']>): Eleme
 export default function OutsideClickListener({
   disabled = false,
   onOutsideClick,
+  stopPropagation = true,
   topNode,
   ignore,
   ignoreTopNode,
@@ -118,17 +120,17 @@ export default function OutsideClickListener({
         const node = getNode(topNode);
         // If eventSourceNode is child of topNode
         if (node && node.contains(eventSourceNode)) {
-          event.stopPropagation();
+          stopPropagation && event.stopPropagation();
           onOutsideClick(event);
         }
         // Otherwise do nothing
         return;
       }
 
-      event.stopPropagation();
+      stopPropagation && event.stopPropagation();
       onOutsideClick(event);
     },
-    [disabled, ignoreTopNode, onOutsideClick, topNode]
+    [disabled, ignoreTopNode, onOutsideClick, stopPropagation, topNode]
   );
 
   useEffect(() => {
