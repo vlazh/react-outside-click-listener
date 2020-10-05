@@ -9,6 +9,7 @@ export interface OutsideClickListenerProps {
    */
   disabled?: boolean;
   onOutsideClick: (nativeEvent: Event) => void;
+  events?: (keyof GlobalEventHandlersEventMap)[];
   stopPropagation?: boolean;
   children: React.ReactElement & { ref?: React.Ref<Node> };
   /**
@@ -76,6 +77,7 @@ function getNode(node: NonNullable<OutsideClickListenerProps['topNode']>): Eleme
 export default function OutsideClickListener({
   disabled = false,
   onOutsideClick,
+  events = ['mousedown', 'touchstart'],
   stopPropagation = true,
   topNode,
   ignore,
@@ -141,16 +143,15 @@ export default function OutsideClickListener({
     const node = topNode ? getNode(topNode) : document;
 
     if (!disabled && node) {
-      node.addEventListener('mousedown', outsideClickHandler);
-      node.addEventListener('touchstart', outsideClickHandler);
+      events.forEach((event) => node.addEventListener(event, outsideClickHandler));
     }
 
     return () => {
       if (node) {
-        node.removeEventListener('mousedown', outsideClickHandler);
-        node.removeEventListener('touchstart', outsideClickHandler);
+        events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outsideClickHandler, disabled, topNode]);
 
   return <>{React.cloneElement(children, { ref: refHandler })}</>;
