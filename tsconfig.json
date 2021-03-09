@@ -1,5 +1,5 @@
 {
-  "extends": "@vzh/configs/ts/common.tsconfig.json",
+  "extends": "@js-toolkit/configs/ts/common.tsconfig.json",
   "compilerOptions": {
     "module": "es2015",
     "isolatedModules": false,
