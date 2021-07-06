@@ -23,6 +23,8 @@ export interface OutsideClickListenerProps {
   ignore?: HtmlTagSelectorMap | ((node: Element) => boolean) | string /** selectors */;
   /** Same as `topNode` but for `ignore` */
   ignoreTopNode?: React.RefObject<Element> | Element | string | null;
+  /** Detect window `blur` event inside iframe and interpret it as outside click. */
+  iframeBlur?: boolean;
 }
 
 function setRef<T extends Node = Node>(
@@ -82,10 +84,12 @@ export default function OutsideClickListener({
   topNode,
   ignore,
   ignoreTopNode,
+  iframeBlur,
   children,
 }: OutsideClickListenerProps): JSX.Element {
   const selfNodeRef = useRef<Element>(null);
   const ignoreRef = useRef(ignore);
+  ignoreRef.current = ignore;
 
   const refHandler = React.useCallback(
     (node: Element | null) => {
@@ -97,16 +101,19 @@ export default function OutsideClickListener({
 
   const outsideClickHandler = useCallback<OutsideClickListenerProps['onOutsideClick']>(
     (event) => {
+      console.log(0);
+
       if (disabled || !selfNodeRef.current) return;
 
-      const eventSourceNode = event.target as Element;
+      const eventSourceNode = event.target instanceof Element ? event.target : undefined;
+
       // Ignore clicks on the component itself.
-      if (selfNodeRef.current.contains(eventSourceNode)) {
+      if (eventSourceNode && selfNodeRef.current.contains(eventSourceNode)) {
         return;
       }
 
       const { current: ignoreMapOrFn } = ignoreRef;
-      if (ignoreMapOrFn) {
+      if (eventSourceNode && ignoreMapOrFn) {
         const isIgnored =
           typeof ignoreMapOrFn === 'function'
             ? ignoreMapOrFn(eventSourceNode)
@@ -118,7 +125,7 @@ export default function OutsideClickListener({
         }
       }
 
-      if (topNode) {
+      if (eventSourceNode && topNode) {
         const node = getNode(topNode);
         // If eventSourceNode is child of topNode
         if (node && node.contains(eventSourceNode)) {
@@ -129,27 +136,29 @@ export default function OutsideClickListener({
         return;
       }
 
+      console.log(1);
       stopPropagation && event.stopPropagation();
+      console.log(2);
       onOutsideClick(event);
     },
     [disabled, ignoreTopNode, onOutsideClick, stopPropagation, topNode]
   );
 
   useEffect(() => {
-    ignoreRef.current = ignore;
-  }, [ignore]);
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    if (disabled) return () => {};
 
-  useEffect(() => {
     const node = topNode ? getNode(topNode) : document;
+    node && events.forEach((event) => node.addEventListener(event, outsideClickHandler));
 
-    if (!disabled && node) {
-      events.forEach((event) => node.addEventListener(event, outsideClickHandler));
-    }
+    iframeBlur && window.parent !== window && window.addEventListener('blur', outsideClickHandler);
 
     return () => {
-      if (node) {
-        events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
-      }
+      node && events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
+
+      iframeBlur &&
+        window.parent !== window &&
+        window.removeEventListener('blur', outsideClickHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outsideClickHandler, disabled, topNode]);
