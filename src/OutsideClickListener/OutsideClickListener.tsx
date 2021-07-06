@@ -101,8 +101,6 @@ export default function OutsideClickListener({
 
   const outsideClickHandler = useCallback<OutsideClickListenerProps['onOutsideClick']>(
     (event) => {
-      console.log(0);
-
       if (disabled || !selfNodeRef.current) return;
 
       const eventSourceNode = event.target instanceof Element ? event.target : undefined;
@@ -136,9 +134,7 @@ export default function OutsideClickListener({
         return;
       }
 
-      console.log(1);
       stopPropagation && event.stopPropagation();
-      console.log(2);
       onOutsideClick(event);
     },
     [disabled, ignoreTopNode, onOutsideClick, stopPropagation, topNode]
