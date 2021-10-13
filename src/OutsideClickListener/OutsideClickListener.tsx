@@ -23,8 +23,11 @@ export interface OutsideClickListenerProps {
   ignore?: HtmlTagSelectorMap | ((node: Element) => boolean) | string /** selectors */;
   /** Same as `topNode` but for `ignore` */
   ignoreTopNode?: React.RefObject<Element> | Element | string | null;
-  /** Detect window `blur` event inside iframe and interpret it as outside click. */
-  iframeBlur?: boolean;
+  /**
+   * Detect window `blur` event and interpret it as outside click.
+   * Useful in iframes.
+   */
+  windowBlurAsOutsideClick?: boolean;
 }
 
 function setRef<T extends Node = Node>(
@@ -84,7 +87,7 @@ export default function OutsideClickListener({
   topNode,
   ignore,
   ignoreTopNode,
-  iframeBlur,
+  windowBlurAsOutsideClick,
   children,
 }: OutsideClickListenerProps): JSX.Element {
   const selfNodeRef = useRef<Element>(null);
@@ -147,14 +150,12 @@ export default function OutsideClickListener({
     const node = topNode ? getNode(topNode) : document;
     node && events.forEach((event) => node.addEventListener(event, outsideClickHandler));
 
-    iframeBlur && window.parent !== window && window.addEventListener('blur', outsideClickHandler);
+    windowBlurAsOutsideClick && window.addEventListener('blur', outsideClickHandler);
 
     return () => {
       node && events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
 
-      iframeBlur &&
-        window.parent !== window &&
-        window.removeEventListener('blur', outsideClickHandler);
+      windowBlurAsOutsideClick && window.removeEventListener('blur', outsideClickHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outsideClickHandler, disabled, topNode]);
