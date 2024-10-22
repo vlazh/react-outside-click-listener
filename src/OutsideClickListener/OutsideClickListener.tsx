@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React from 'react';
 
 /** Map of elements and selectors */
 export type HtmlTagSelectorMap = { [P in keyof JSX.IntrinsicElements]?: string | undefined };
@@ -19,8 +19,9 @@ export interface OutsideClickListenerProps {
    * Useful if you need avoid propogation click event from child node to `topNode`.
    */
   topNode?: React.RefObject<Element> | Element | string | null;
-  /** Do not fire `onOutsideClick` event for these elements (and their children) */
-  ignore?: HtmlTagSelectorMap | ((node: Element) => boolean) | string /** selectors */;
+  /** Do not fire `onOutsideClick` event for these elements (and their children).
+   * Tag selector map, callback, css selector. */
+  ignore?: HtmlTagSelectorMap | ((node: Element) => boolean) | string;
   /** Same as `topNode` but for `ignore` */
   ignoreTopNode?: React.RefObject<Element> | Element | string | null;
   /**
@@ -37,7 +38,6 @@ function setRef<T extends Node = Node>(
   if (typeof ref === 'function') {
     ref(value);
   } else {
-    // eslint-disable-next-line no-param-reassign
     ref.current = value;
   }
 }
@@ -47,7 +47,7 @@ function findUp(
   mapOrSelectors: HtmlTagSelectorMap | string,
   topNode?: Element | null
 ): boolean {
-  const tag = el.nodeName.toLowerCase();
+  const tag = el.nodeName.toLowerCase() as keyof HtmlTagSelectorMap;
   if (typeof mapOrSelectors === 'string') {
     if (el.matches(mapOrSelectors)) return true;
   } else if (
@@ -77,7 +77,7 @@ function getNode(node: NonNullable<OutsideClickListenerProps['topNode']>): Eleme
 }
 
 /**
- * Children must hold a ref to dom node.
+ * Child must hold a ref to dom node.
  */
 export default function OutsideClickListener({
   disabled = false,
@@ -90,19 +90,19 @@ export default function OutsideClickListener({
   windowBlurAsOutsideClick,
   children,
 }: OutsideClickListenerProps): JSX.Element {
-  const selfNodeRef = useRef<Element>(null);
-  const ignoreRef = useRef(ignore);
+  const selfNodeRef = React.useRef<Element>(null);
+  const ignoreRef = React.useRef(ignore);
   ignoreRef.current = ignore;
 
   const refHandler = React.useCallback(
     (node: Element | null) => {
-      children.ref && setRef(children.ref, node); // pass ref to child ref handler if exists
+      if (children.ref) setRef(children.ref, node); // pass ref to child ref handler if exists
       setRef(selfNodeRef, node);
     },
     [children.ref]
   );
 
-  const outsideClickHandler = useCallback<OutsideClickListenerProps['onOutsideClick']>(
+  const outsideClickHandler = React.useCallback<OutsideClickListenerProps['onOutsideClick']>(
     (event) => {
       if (disabled || !selfNodeRef.current) return;
 
@@ -130,32 +130,29 @@ export default function OutsideClickListener({
         const node = getNode(topNode);
         // If eventSourceNode is child of topNode
         if (node && node.contains(eventSourceNode)) {
-          stopPropagation && event.stopPropagation();
+          if (stopPropagation) event.stopPropagation();
           onOutsideClick(event);
         }
         // Otherwise do nothing
         return;
       }
 
-      stopPropagation && event.stopPropagation();
+      if (stopPropagation) event.stopPropagation();
       onOutsideClick(event);
     },
     [disabled, ignoreTopNode, onOutsideClick, stopPropagation, topNode]
   );
 
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    if (disabled) return () => {};
+  React.useEffect(() => {
+    if (disabled) return undefined;
 
     const node = topNode ? getNode(topNode) : document;
-    node && events.forEach((event) => node.addEventListener(event, outsideClickHandler));
-
-    windowBlurAsOutsideClick && window.addEventListener('blur', outsideClickHandler);
+    if (node) events.forEach((event) => node.addEventListener(event, outsideClickHandler));
+    if (windowBlurAsOutsideClick) window.addEventListener('blur', outsideClickHandler);
 
     return () => {
-      node && events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
-
-      windowBlurAsOutsideClick && window.removeEventListener('blur', outsideClickHandler);
+      if (node) events.forEach((event) => node.removeEventListener(event, outsideClickHandler));
+      if (windowBlurAsOutsideClick) window.removeEventListener('blur', outsideClickHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outsideClickHandler, disabled, topNode]);
