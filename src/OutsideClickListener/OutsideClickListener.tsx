@@ -1,7 +1,7 @@
 import React from 'react';
 
 /** Map of elements and selectors */
-export type HtmlTagSelectorMap = { [P in keyof JSX.IntrinsicElements]?: string | undefined };
+export type HtmlTagSelectorMap = { [P in keyof React.JSX.IntrinsicElements]?: string | undefined };
 
 export interface OutsideClickListenerProps {
   /**
@@ -11,7 +11,7 @@ export interface OutsideClickListenerProps {
   onOutsideClick: (nativeEvent: Event) => void;
   events?: (keyof GlobalEventHandlersEventMap)[];
   stopPropagation?: boolean;
-  children: React.ReactElement & { ref?: React.Ref<Node> };
+  children: React.ReactElement<React.RefAttributes<Node>>;
   /**
    * `id` or `Ref` or `Node`.
    * The most top parent node of child node to detect outside click.
@@ -89,17 +89,17 @@ export default function OutsideClickListener({
   ignoreTopNode,
   windowBlurAsOutsideClick,
   children,
-}: OutsideClickListenerProps): JSX.Element {
+}: OutsideClickListenerProps): React.JSX.Element {
   const selfNodeRef = React.useRef<Element>(null);
   const ignoreRef = React.useRef(ignore);
   ignoreRef.current = ignore;
 
   const refHandler = React.useCallback(
     (node: Element | null) => {
-      if (children.ref) setRef(children.ref, node); // pass ref to child ref handler if exists
+      if (children.props.ref) setRef(children.props.ref, node); // pass ref to child ref handler if exists
       setRef(selfNodeRef, node);
     },
-    [children.ref]
+    [children.props.ref]
   );
 
   const outsideClickHandler = React.useCallback<OutsideClickListenerProps['onOutsideClick']>(
@@ -157,5 +157,5 @@ export default function OutsideClickListener({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outsideClickHandler, disabled, topNode]);
 
-  return <>{React.cloneElement(children, { ref: refHandler })}</>;
+  return React.cloneElement(children, { ref: refHandler });
 }
